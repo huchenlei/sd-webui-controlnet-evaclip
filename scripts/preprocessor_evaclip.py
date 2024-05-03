@@ -1,20 +1,18 @@
 import torch
 import numpy as np
 from typing import NamedTuple
+from pathlib import Path
 from torchvision.transforms import InterpolationMode
 from torchvision.transforms.functional import normalize, resize
 
 from eva_clip.factory import create_model_and_transforms
+from eva_clip.constants import OPENAI_DATASET_MEAN, OPENAI_DATASET_STD
 
 # sd-webui-controlnet
 from internal_controlnet.external_code import Preprocessor, PreprocessorParameter
 
 # A1111
 from modules import devices
-
-
-OPENAI_DATASET_MEAN = (0.48145466, 0.4578275, 0.40821073)
-OPENAI_DATASET_STD = (0.26862954, 0.26130258, 0.27577711)
 
 
 class EvaCLIPResult(NamedTuple):
@@ -27,6 +25,7 @@ class PreprocessorEvaCLIP(Preprocessor):
         super().__init__(name="EVA02-CLIP-L-14-336")
         self.tags = []
         self.slider_resolution = PreprocessorParameter(visible=False)
+        self.returns_image = False
         self.show_control_mode = True
         self.do_not_need_model = False
         self.sorting_priority = 100  # higher goes to top in the list
@@ -43,15 +42,15 @@ class PreprocessorEvaCLIP(Preprocessor):
         """The model is around 800MB."""
         if self.model is None:
             model, _, _ = create_model_and_transforms(
-                "EVA02-CLIP-L-14-336", "eva_clip", force_custom_clip=True
+                "EVA02-CLIP-L-14-336",
+                "eva_clip",
+                force_custom_clip=True,
+                cache_dir=Path(__file__).parents[1] / "models",
+                device=self.device,
             )
             self.model = model.visual
-            eva_transform_mean = getattr(
-                self.clip_vision_model, "image_mean", OPENAI_DATASET_MEAN
-            )
-            eva_transform_std = getattr(
-                self.clip_vision_model, "image_std", OPENAI_DATASET_STD
-            )
+            eva_transform_mean = getattr(self.model, "image_mean", OPENAI_DATASET_MEAN)
+            eva_transform_std = getattr(self.model, "image_std", OPENAI_DATASET_STD)
             if not isinstance(eva_transform_mean, (list, tuple)):
                 eva_transform_mean = (eva_transform_mean,) * 3
             if not isinstance(eva_transform_std, (list, tuple)):
@@ -79,13 +78,13 @@ class PreprocessorEvaCLIP(Preprocessor):
 
         face_features_image = resize(
             input_image,
-            self.clip_vision_model.image_size,
+            self.model.image_size,
             InterpolationMode.BICUBIC,
         )
         face_features_image = normalize(
             face_features_image, self.eva_transform_mean, self.eva_transform_std
         )
-        id_cond_vit, id_vit_hidden = self.clip_vision_model(
+        id_cond_vit, id_vit_hidden = self.model(
             face_features_image,
             return_all_features=False,
             return_hidden=True,
