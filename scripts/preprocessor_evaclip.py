@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from typing import NamedTuple
 from pathlib import Path
+from einops import rearrange
 from torchvision.transforms import InterpolationMode
 from torchvision.transforms.functional import normalize, resize
 
@@ -69,16 +70,19 @@ class PreprocessorEvaCLIP(Preprocessor):
         slider_1=None,
         slider_2=None,
         slider_3=None,
-        **kwargs
+        **kwargs,
     ):
         self.load_model()
         if isinstance(input_image, np.ndarray):
-            input_image = torch.from_numpy(input_image)
+            torch_img = torch.from_numpy(input_image).float() / 255.0
+            input_image = rearrange(torch_img, "h w c -> 1 c h w")
         assert isinstance(input_image, torch.Tensor)
+        assert input_image.ndim == 4, f"BCHW, {input_image.shape}"
+        input_image = input_image.to(self.device)
 
         face_features_image = resize(
             input_image,
-            self.model.image_size,
+            (self.model.image_size, self.model.image_size),
             InterpolationMode.BICUBIC,
         )
         face_features_image = normalize(
