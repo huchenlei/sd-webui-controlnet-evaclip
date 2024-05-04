@@ -3,8 +3,8 @@ import numpy as np
 from typing import NamedTuple
 from pathlib import Path
 from einops import rearrange
-from torchvision.transforms import InterpolationMode
 from torchvision.transforms.functional import normalize, resize
+from PIL import Image
 
 from eva_clip.factory import create_model_and_transforms
 from eva_clip.constants import OPENAI_DATASET_MEAN, OPENAI_DATASET_STD
@@ -82,7 +82,7 @@ class PreprocessorEvaCLIP(Preprocessor):
         face_features_image = resize(
             input_image,
             resize_target,
-            InterpolationMode.BICUBIC,
+            Image.BICUBIC,
         )
         face_features_image = normalize(
             face_features_image, self.eva_transform_mean, self.eva_transform_std
