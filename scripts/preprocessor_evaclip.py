@@ -72,9 +72,16 @@ class PreprocessorEvaCLIP(Preprocessor):
         assert input_image.ndim == 4, f"BCHW, {input_image.shape}"
         input_image = input_image.to(self.device)
 
+        image_size = self.model.visual.image_size
+        if isinstance(image_size, tuple):
+            resize_target = image_size
+        else:
+            assert isinstance(image_size, int)
+            resize_target = (image_size, image_size)
+
         face_features_image = resize(
             input_image,
-            (self.model.visual.image_size, self.model.visual.image_size),
+            resize_target,
             InterpolationMode.BICUBIC,
         )
         face_features_image = normalize(
