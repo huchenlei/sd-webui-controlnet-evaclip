@@ -34,16 +34,15 @@ class PreprocessorEvaCLIP(Preprocessor):
     def load_model(self):
         """The model is around 800MB."""
         if self.model is None:
-            model, _, _ = create_model_and_transforms(
+            self.model, _, _ = create_model_and_transforms(
                 "EVA02-CLIP-L-14-336",
                 "eva_clip",
                 force_custom_clip=True,
                 cache_dir=Path(__file__).parents[1] / "models",
                 device=self.device,
             )
-            self.model = model.visual
-            eva_transform_mean = getattr(self.model, "image_mean", OPENAI_DATASET_MEAN)
-            eva_transform_std = getattr(self.model, "image_std", OPENAI_DATASET_STD)
+            eva_transform_mean = getattr(self.model.visual, "image_mean", OPENAI_DATASET_MEAN)
+            eva_transform_std = getattr(self.model.visual, "image_std", OPENAI_DATASET_STD)
             if not isinstance(eva_transform_mean, (list, tuple)):
                 eva_transform_mean = (eva_transform_mean,) * 3
             if not isinstance(eva_transform_std, (list, tuple)):
@@ -53,7 +52,8 @@ class PreprocessorEvaCLIP(Preprocessor):
         return self.model.to(device=self.device)
 
     def unload_model(self):
-        self.model.to(device="cpu")
+        """Unload to meta as CLIP model is large."""
+        self.model.to(device="meta")
 
     def __call__(
         self,
@@ -74,13 +74,13 @@ class PreprocessorEvaCLIP(Preprocessor):
 
         face_features_image = resize(
             input_image,
-            (self.model.image_size, self.model.image_size),
+            (self.model.visual.image_size, self.model.visual.image_size),
             InterpolationMode.BICUBIC,
         )
         face_features_image = normalize(
             face_features_image, self.eva_transform_mean, self.eva_transform_std
         )
-        id_cond_vit, id_vit_hidden = self.model(
+        id_cond_vit, id_vit_hidden = self.model.visual(
             face_features_image,
             return_all_features=False,
             return_hidden=True,
