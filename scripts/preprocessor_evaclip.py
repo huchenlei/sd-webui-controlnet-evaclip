@@ -12,9 +12,6 @@ from eva_clip.constants import OPENAI_DATASET_MEAN, OPENAI_DATASET_STD
 # sd-webui-controlnet
 from internal_controlnet.external_code import Preprocessor, PreprocessorParameter
 
-# A1111
-from modules import devices
-
 
 class EvaCLIPResult(NamedTuple):
     id_cond_vit: torch.Tensor
@@ -22,7 +19,7 @@ class EvaCLIPResult(NamedTuple):
 
 
 class PreprocessorEvaCLIP(Preprocessor):
-    def __init__(self, device=None):
+    def __init__(self):
         super().__init__(name="EVA02-CLIP-L-14-336")
         self.tags = []
         self.slider_resolution = PreprocessorParameter(visible=False)
@@ -33,11 +30,6 @@ class PreprocessorEvaCLIP(Preprocessor):
         self.model = None
         self.eva_transform_mean = None
         self.eva_transform_std = None
-        self.device = (
-            devices.get_device_for("controlnet")
-            if device is None
-            else torch.device("cpu")
-        )
 
     def load_model(self):
         """The model is around 800MB."""
@@ -66,7 +58,7 @@ class PreprocessorEvaCLIP(Preprocessor):
     def __call__(
         self,
         input_image,
-        resolution,
+        resolution=512,
         slider_1=None,
         slider_2=None,
         slider_3=None,
